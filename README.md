@@ -3,7 +3,7 @@
 Food label scanner. Node + Express backend, Supabase (Google login + scan counter), Gemini reads the label photo.
 
 ## Setup (5 steps)
-1. **Supabase**: create a project. SQL Editor: paste `schema.sql` and run it.
+1. **Supabase**: create a project. SQL Editor: paste `schema.sql` and run it. This now creates both `profiles` and `scans` (history).
 2. **Google login**: Supabase > Authentication > Providers > Google. Turn it on and add your Google client ID and secret. Under Authentication > URL Configuration, add your site URL (for example `http://localhost:3000` and your live URL).
 3. **Keys**: open `.env` and fill in the Supabase URL and keys, and your Gemini API key.
 4. **Run**: `npm install` then `npm start`. Open http://localhost:3000
@@ -38,5 +38,5 @@ Set `LABEL_PROVIDER` in `.env` to `nvidia` (Gemma via NVIDIA) or `gemini`. For N
 - `/history`: every scan and check saved per user (newest first), with delete and clear all.
 - "Summarize with AI" on each result (Gemini), optional question, cached per scan, max 10 per hour per user.
 - Cleaner pages: manual form and details are collapsed; nav is Home, Scan, History, Limits.
-- Run `schema_history.sql` once in Supabase to create the `scans` table. Without it scanning still works but nothing is saved or summarized.
+- `schema.sql` creates both the account/scan-counter tables and the `scans` history table. If you already installed an older version, run `schema_history.sql` once in Supabase to add/fix history.
 - Contact email is set in `server.js` (`CONTACT_EMAIL`). A `CONTACT_EMAIL` variable in Render overrides it.
