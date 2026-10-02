@@ -51,6 +51,7 @@ function clean(n) {
   }
   return o;
 }
+const pc = p => (p > 999 ? 'over 999' : p);
 const r1 = v => Math.round(v * 10) / 10;
 const nice = g => (g >= 100 ? Math.floor(g / 10) * 10 : g >= 20 ? Math.floor(g / 5) * 5 : Math.floor(g));
 const lvl = (v, lo, hi) => (v <= lo ? 'low' : v > hi ? 'high' : 'medium');
@@ -68,7 +69,7 @@ function analyze(n) {
     const pct = Math.round(v / d.daily * 100);
     const raw = v > 0 ? d.daily / (v / 100) : null;
     const level = lvl(v, d.low, d.high);
-    let text = r1(v) + ' ' + d.unit + ' per 100 g. 100 g uses ' + pct + '% of the daily limit (' + d.daily + ' ' + d.unit + ').';
+    let text = r1(v) + ' ' + d.unit + ' per 100 g. 100 g uses ' + pc(pct) + '% of the daily limit (' + d.daily + ' ' + d.unit + ').';
     if (raw !== null) text += ' Up to about ' + nice(raw) + ' g fits in today.';
     if (serving) text += ' One ' + serving + ' g serving uses ' + Math.round(serving * v / 100 / d.daily * 100) + '%.';
     rows.push({ key: d.key, name: d.name, level, raw, text, tip: d.tip, unit: d.unit, daily: d.daily, per100: r1(v), pct });
@@ -87,7 +88,7 @@ function analyze(n) {
     const lim = limited[0], safe = nice(lim.raw);
     a.safe_grams = safe;
     a.limiting = lim.name;
-    a.headline = lim.name + ' runs out first. ' + safe + ' g of this product uses up the whole daily limit of ' + lim.daily + ' ' + lim.unit + ' (100 g uses ' + lim.pct + '%).';
+    a.headline = lim.name + ' runs out first. ' + safe + ' g of this product uses up the whole daily limit of ' + lim.daily + ' ' + lim.unit + ' (100 g uses ' + pc(lim.pct) + '%).';
     a.tip = lim.tip;
     a.points.push(serving
       ? (safe >= serving ? 'That is about ' + Math.floor(safe / serving * 2) / 2 + ' serving(s) of ' + serving + ' g, if nothing else you eat today has ' + lim.name.toLowerCase() + '.' : 'Even one serving (' + serving + ' g) is more than the daily ' + lim.name.toLowerCase() + ' limit allows.')
@@ -107,24 +108,36 @@ function analyze(n) {
 const PROMPT = 'Read the nutrition information table on this packaged food label (often an Indian FSSAI style label). Return JSON only with these keys: product_name (string), serving_size_g, energy_kcal, protein, carbs, total_sugars, added_sugars, total_fat, sat_fat, trans_fat, cholesterol, fibre, sodium, salt. All values are numbers per 100 g (or per 100 ml), or null if not shown. Units: energy in kcal (if only kJ, divide by 4.184), cholesterol and sodium in mg, salt and everything else in g. "Nil", "Absent" and "0" mean 0. If the table is only per serving and the serving size in g is given, convert to per 100 g. If only salt is shown, fill salt and leave sodium null. Never guess: use null when unreadable. If the image is not a nutrition label, return all nulls.';
 const aiMsg = s => (s === 400 ? 'The AI rejected the request. Check the AI key and model name.' : s === 401 || s === 403 ? 'The AI key is not valid or not allowed.' : s === 429 ? 'The AI limit is reached. Try again in a minute.' : 'The AI service had a problem. Try again.');
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function geminiCall(parts, gc, system) {
   if (!GEMINI_API_KEY) throw new AppError('no_gemini', 'Add GEMINI_API_KEY to use this feature.', 500);
-  for (const model of [...new Set([GEMINI_MODEL, 'gemini-flash-latest'])]) {
+  let lastStatus = 0;
+  // If one model is busy (503) or missing (404), retry once, then try the next model.
+  for (const model of [...new Set([GEMINI_MODEL, 'gemini-flash-latest', 'gemini-2.5-flash-lite'])]) {
     const cfg = { ...gc };
     if (/2\.5/.test(model)) cfg.thinkingConfig = { thinkingBudget: 0 };
     const body = { contents: [{ role: 'user', parts }], generationConfig: cfg };
     if (system) body.systemInstruction = { parts: [{ text: system }] };
-    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
-      method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY }, body: JSON.stringify(body),
-    });
-    if (r.status === 404) { console.error('gemini model not found:', model); continue; }
-    if (!r.ok) { console.error('gemini', r.status, (await r.text()).slice(0, 300)); throw new AppError('ai_' + r.status, aiMsg(r.status), 502); }
-    const d = await r.json();
-    const ps = (d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [];
-    const text = ps.map(p => p.text || '').join('');
-    if (!text.trim()) { console.error('gemini empty', JSON.stringify(d).slice(0, 300)); throw new AppError('ai_empty', 'The AI returned nothing. Try again.', 502); }
-    return text;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+        method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY }, body: JSON.stringify(body),
+      });
+      if (r.status === 404) { console.error('gemini model not found:', model); lastStatus = 404; break; }
+      if ([429, 500, 502, 503, 504].includes(r.status)) {
+        lastStatus = r.status; console.error('gemini busy', r.status, model);
+        if (attempt === 0) await sleep(1500);
+        continue;
+      }
+      if (!r.ok) { console.error('gemini', r.status, (await r.text()).slice(0, 300)); throw new AppError('ai_' + r.status, aiMsg(r.status), 502); }
+      const d = await r.json();
+      const ps = (d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [];
+      const text = ps.map(p => p.text || '').join('');
+      if (!text.trim()) { console.error('gemini empty', JSON.stringify(d).slice(0, 300)); throw new AppError('ai_empty', 'The AI returned nothing. Try again.', 502); }
+      return text;
+    }
   }
+  if (lastStatus === 429) throw new AppError('ai_429', aiMsg(429), 503);
+  if (lastStatus && lastStatus !== 404) throw new AppError('ai_' + lastStatus, 'Google\'s AI is busy right now. Please try again in a minute.', 503);
   throw new AppError('ai_404', 'The AI model name is wrong. Set GEMINI_MODEL to a current Gemini Flash model.', 502);
 }
 const callGemini = (b64, mime) => geminiCall([{ inline_data: { mime_type: mime, data: b64 } }, { text: PROMPT }], { temperature: 0, maxOutputTokens: 4096, responseMimeType: 'application/json' });
