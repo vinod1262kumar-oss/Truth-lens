@@ -21,3 +21,15 @@ Gemini model: set `GEMINI_MODEL` in `.env`. Default is `gemini-2.5-flash`. If Go
 
 ## Which AI reads the label
 Set `LABEL_PROVIDER` in `.env` to `nvidia` (Gemma via NVIDIA) or `gemini`. For NVIDIA, use a Gemma model that accepts images (default `google/gemma-3n-e4b-it`). If you get an error about images, try `google/gemma-3-27b-it` or switch to `gemini`.
+
+## SEO and trust pages
+- Pages: `/privacy`, `/terms`, plus `llms.txt`, `robots.txt` and `sitemap.xml`. The home page has the title, description, contact footer and Organization, WebApplication and FAQ schema.
+- Add `CONTACT_EMAIL` in `.env` (and in Render Environment). It fills the contact email everywhere. Use an email made only for TruthLens.
+- `SITE_URL` is optional. It is detected automatically.
+- The privacy and terms text is a simple template. Read it and change it to match how you really run the app.
+
+## Version 2 changes
+- Multi-page site: Home, Scan, Limits, Pricing, Contact, Privacy, Terms (shared header and footer in `partials/`).
+- Manual entry has all common Indian label fields: energy, protein, carbohydrate, total and added sugars, total, saturated and trans fat, cholesterol, fibre, sodium or salt, serving size.
+- Answers show a verdict, safe grams, servings, a sensible single portion, and each nutrient as Low, Medium or High.
+- Camera: Take photo and From gallery buttons, bigger photo, safer AI settings. Open `/api/health` to check that your keys are set. Errors now show a short code.

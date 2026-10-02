@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TruthLens: Food Label Scanner and Safe Eating Amount Checker</title>
+<meta name="description" content="Scan a food label and see how much is safe to eat today. TruthLens checks sugar, fat, saturated fat and sodium against WHO daily limits. 10 free scans."><meta name="author" content="TruthLens Team"><meta name="robots" content="index, follow">
+<link rel="canonical" href="{{SITE_URL}}/">
+<meta property="og:type" content="website"><meta property="og:title" content="TruthLens: Food Label Scanner and Safe Eating Amount Checker"><meta property="og:description" content="Scan a food label and see how much is safe to eat today. TruthLens checks sugar, fat, saturated fat and sodium against WHO daily limits. 10 free scans."><meta property="og:url" content="{{SITE_URL}}/">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/assets/style.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+{"@type":"Organization","name":"TruthLens","url":"{{SITE_URL}}/","email":"{{CONTACT_EMAIL}}","description":"TruthLens is a food label scanner that tells you a safe amount to eat based on WHO daily limits."},
+{"@type":"WebApplication","name":"TruthLens","url":"{{SITE_URL}}/","applicationCategory":"HealthApplication","operatingSystem":"Web browser","author":{"@type":"Organization","name":"TruthLens Team"},"offers":{"@type":"Offer","price":"0","priceCurrency":"INR","description":"10 free scans. A paid plan is planned."}},
+{"@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does TruthLens do?","acceptedAnswer":{"@type":"Answer","text":"TruthLens reads the nutrition table on a packaged food and tells you how many grams are safe to eat today, based on WHO daily limits for sugar, saturated fat, trans fat, sodium and total fat."}},
+{"@type":"Question","name":"How is the safe amount calculated?","acceptedAnswer":{"@type":"Answer","text":"For each nutrient, safe grams = daily limit divided by (nutrient per 100 g divided by 100). The smallest result is the limiting nutrient."}},
+{"@type":"Question","name":"Which daily limits does TruthLens use?","acceptedAnswer":{"@type":"Answer","text":"For a 2,000 kcal adult: sugar 25 g, saturated fat 22 g, trans fat 2.2 g, total fat 67 g and sodium 2,000 mg per day, based on WHO guidance."}},
+{"@type":"Question","name":"Is TruthLens free?","acceptedAnswer":{"@type":"Answer","text":"Every account gets 10 free scans. After that you are asked to upgrade."}},
+{"@type":"Question","name":"Is TruthLens medical advice?","acceptedAnswer":{"@type":"Answer","text":"No. It is general nutrition guidance. If you have diabetes, high blood pressure or kidney disease, or are pregnant, ask a doctor."}}
+]}]}
+</script></head>
+<body><div class="blob b1"></div><div class="blob b2"></div>
+{{HEADER}}
+<main class="wrap">
+<h1>Know how much of it is okay to eat.</h1>
+<p class="sub">Scan the nutrition table on any packed food. TruthLens checks sugar, fat, saturated fat, trans fat and sodium against WHO daily limits and tells you a safe amount in grams.</p>
+<div class="two"><a class="btn" href="/scan">Scan a label</a><a class="btn alt" href="/limits">See the limits</a></div>
+<h2>How it works</h2>
+<div class="cols">
+<div class="glass"><span class="num">1</span><h3>Scan or type</h3><p>Take a photo of the label, or type the values from the pack.</p></div>
+<div class="glass"><span class="num">2</span><h3>We compare</h3><p>Each nutrient is checked against the daily limit and FSSAI style low and high levels.</p></div>
+<div class="glass"><span class="num">3</span><h3>You get a clear answer</h3><p>A safe amount in grams, servings, and which nutrient runs out first.</p></div>
+</div>
+<h2>Example</h2>
+<div class="glass"><p>A snack has 30 g sugar, 8 g saturated fat and 400 mg sodium per 100 g. Sugar allows 25 / 0.30 = about 83 g, saturated fat about 275 g, sodium 500 g. The smallest is 83 g, so <b>sugar is the limiting nutrient</b> and you should stop at about 80 g, with no other sugary food that day.</p></div>
+<h2>Limits we use</h2>
+<ul><li><b>Sugar:</b> 25 g a day (WHO: under 5% of energy for extra benefit).</li><li><b>Saturated fat:</b> 22 g a day (WHO: under 10% of energy).</li><li><b>Sodium:</b> under 2,000 mg a day, about 5 g salt (WHO).</li></ul>
+<p><a href="/limits">Read all limits and sources</a></p>
+<h2>Questions</h2>
+<p><b>What does TruthLens do?</b> It reads a food label and tells you how many grams are safe to eat today.</p>
+<p><b>Is it free?</b> Every account gets 10 free scans. <a href="/pricing">See plans</a>.</p>
+<p><b>Is it medical advice?</b> No. If you have diabetes, high blood pressure or kidney disease, or are pregnant, ask a doctor.</p>
+<p><b>Are my photos stored?</b> No. The photo is sent to an AI service only to read the label. <a href="/privacy">Privacy policy</a>.</p>
+</main>
+{{FOOTER}}
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/app.js"></script>
+</body></html>
