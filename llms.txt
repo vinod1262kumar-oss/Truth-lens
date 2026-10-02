@@ -1,0 +1,30 @@
+# TruthLens
+
+> TruthLens is a food label scanner. You photograph the nutrition table on a packaged food, and it tells you how many grams are safe to eat today, based on WHO daily limits.
+
+## What it checks
+- Sugar: 25 g per day (WHO, under 5% of energy on 2,000 kcal)
+- Saturated fat: 22 g per day (WHO, under 10% of energy on 2,000 kcal)
+- Trans fat: about 2.2 g per day (WHO, under 1% of energy)
+- Total fat: about 67 g per day (WHO, 30% of energy)
+- Sodium: under 2,000 mg per day (WHO, about 5 g salt)
+- Safe grams = daily limit / (nutrient per 100 g / 100). The smallest result is the limiting nutrient.
+
+## Plans
+- Free: 10 scans per account. A paid plan is planned.
+
+## Important
+- General nutrition guidance, not medical advice.
+- Label values have tolerances of about 20%, so results are estimates.
+
+## Pages
+- [Scan]({{SITE_URL}}/scan)
+- [Limits and sources]({{SITE_URL}}/limits)
+- [Pricing]({{SITE_URL}}/pricing)
+- [Contact]({{SITE_URL}}/contact)
+- [Home]({{SITE_URL}}/)
+- [Privacy Policy]({{SITE_URL}}/privacy)
+- [Terms of Service]({{SITE_URL}}/terms)
+
+## Contact
+{{CONTACT_EMAIL}}

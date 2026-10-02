@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scan a Food Label | TruthLens</title>
+<meta name="description" content="Scan or type a food label to see how many grams are safe to eat today, based on WHO daily limits."><meta name="author" content="TruthLens Team"><meta name="robots" content="index, follow">
+<link rel="canonical" href="{{SITE_URL}}/scan">
+<meta property="og:type" content="website"><meta property="og:title" content="Scan a Food Label | TruthLens"><meta property="og:description" content="Scan or type a food label to see how many grams are safe to eat today, based on WHO daily limits."><meta property="og:url" content="{{SITE_URL}}/scan">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/assets/style.css"></head>
+<body><div class="blob b1"></div><div class="blob b2"></div>
+{{HEADER}}
+<main class="wrap">
+<h1>Scan a food label</h1>
+<p class="sub">Take a photo of the nutrition table, or type the values yourself.</p>
+<section class="glass" data-auth="out" hidden><h3>Sign in to scan</h3><p>Sign in with Google to get your 10 free scans.</p><button class="btn" id="google" type="button">Continue with Google</button></section>
+<div data-auth="in" hidden>
+<section class="glass">
+<h3>1. Scan with camera</h3>
+<div class="two"><button class="btn" id="takeBtn" type="button">Take photo</button><button class="btn alt" id="pickBtn" type="button">From gallery</button></div>
+<input type="file" id="camIn" accept="image/*" capture="environment" hidden><input type="file" id="picIn" accept="image/*" hidden>
+<img class="preview" id="preview" alt="Label photo" hidden>
+<p class="note" id="msg" aria-live="polite">Tip: hold the phone straight, in good light, with the whole nutrition table in view.</p>
+</section>
+<section class="glass">
+<h3>2. Or enter values per 100 g</h3>
+<p class="note" style="margin-top:0">Copy these from the nutrition table on the pack. Leave blank what is not printed. Added sugars gives the best answer.</p>
+<div class="fgrid"><div style="grid-column:1/-1"><label for="f_name">Product name (optional)</label><input id="f_name" type="text" maxlength="80"></div>
+<div style="grid-column:1/-1"><label for="f_serving">Serving size (g, optional)</label><input id="f_serving" type="number" inputmode="decimal" min="0" step="any"></div></div>
+<div class="fgrid" id="fields"></div>
+<button class="btn" id="calc" type="button">Check safe amount</button>
+<p class="note">A re-check within 10 minutes of a scan is free. Based on a 2,000 kcal adult.</p>
+</section>
+<section class="glass" id="result" hidden><h2 id="resTitle" style="margin-top:0">Your result</h2><div id="resBody"></div></section>
+</div>
+<div id="modal" hidden><div class="glass"><h3>You have used your free scans</h3><p>Upgrade to keep scanning without a limit.</p><a class="btn" href="/pricing">See plans</a><button class="btn alt" id="closeModal" type="button" style="margin-top:10px">Not now</button></div></div>
+</main>
+{{FOOTER}}
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/app.js"></script>
+<script src="/assets/scan.js"></script>
+</body></html>

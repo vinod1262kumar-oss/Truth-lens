@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<url><loc>{{SITE_URL}}/</loc></url>
+<url><loc>{{SITE_URL}}/scan</loc></url>
+<url><loc>{{SITE_URL}}/limits</loc></url>
+<url><loc>{{SITE_URL}}/pricing</loc></url>
+<url><loc>{{SITE_URL}}/contact</loc></url>
+<url><loc>{{SITE_URL}}/privacy</loc></url>
+<url><loc>{{SITE_URL}}/terms</loc></url>
+</urlset>
