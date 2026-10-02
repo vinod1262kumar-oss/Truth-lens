@@ -39,3 +39,14 @@ input[type=number],input[type=text]{width:100%;font:inherit;font-size:16px;paddi
 .foot{padding-top:30px;padding-bottom:40px;text-align:center;font-size:13px;color:var(--mute);line-height:1.9}
 #modal{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(42,36,24,.35)}
 #modal .glass{background:rgba(255,255,255,.92);max-width:360px;text-align:center}
+
+details.glass>summary{cursor:pointer;font-weight:600;font-size:16px;list-style:none}details.glass>summary::-webkit-details-marker{display:none}
+details.glass>summary:after{content:"+";float:right;color:var(--gold-d)}details.glass[open]>summary:after{content:"-"}details.glass[open]>summary{margin-bottom:10px}
+.more{margin-top:12px}.more summary{cursor:pointer;color:var(--gold-d);font-size:14px;font-weight:600}.more .fgrid{margin-top:10px}
+.faq{border-bottom:1px solid rgba(201,162,75,.3);padding:11px 0}.faq summary{cursor:pointer;font-weight:600;font-size:15px}.faq p{margin:8px 0 0;color:var(--mute)}
+.askrow{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+.sumbox{background:#fffaf0;border:1px solid rgba(201,162,75,.45);border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:14.5px;line-height:1.6}
+.sumbox b{display:block;color:var(--gold-d);margin-top:8px}.sumbox b:first-child{margin-top:0}
+.hcard{padding:14px}.hcard>summary{display:flex;justify-content:space-between;align-items:center;gap:10px}.hcard>summary:after{content:none!important}
+.hs{display:flex;flex-direction:column;min-width:0}.hs b{overflow-wrap:anywhere}.hs small{color:var(--mute);font-size:12.5px}
+.hb{margin-top:10px;border-top:1px solid rgba(201,162,75,.3);padding-top:10px}

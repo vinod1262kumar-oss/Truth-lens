@@ -10,26 +10,31 @@
 {{HEADER}}
 <main class="wrap">
 <h1>Scan a food label</h1>
-<p class="sub">Take a photo of the nutrition table, or type the values yourself.</p>
+<p class="sub">Take a photo of the nutrition table. We tell you how much is safe to eat.</p>
 <section class="glass" data-auth="out" hidden><h3>Sign in to scan</h3><p>Sign in with Google to get your 10 free scans.</p><button class="btn" id="google" type="button">Continue with Google</button></section>
 <div data-auth="in" hidden>
 <section class="glass">
-<h3>1. Scan with camera</h3>
 <div class="two"><button class="btn" id="takeBtn" type="button">Take photo</button><button class="btn alt" id="pickBtn" type="button">From gallery</button></div>
 <input type="file" id="camIn" accept="image/*" capture="environment" hidden><input type="file" id="picIn" accept="image/*" hidden>
 <img class="preview" id="preview" alt="Label photo" hidden>
 <p class="note" id="msg" aria-live="polite">Tip: hold the phone straight, in good light, with the whole nutrition table in view.</p>
 </section>
-<section class="glass">
-<h3>2. Or enter values per 100 g</h3>
-<p class="note" style="margin-top:0">Copy these from the nutrition table on the pack. Leave blank what is not printed. Added sugars gives the best answer.</p>
-<div class="fgrid"><div style="grid-column:1/-1"><label for="f_name">Product name (optional)</label><input id="f_name" type="text" maxlength="80"></div>
-<div style="grid-column:1/-1"><label for="f_serving">Serving size (g, optional)</label><input id="f_serving" type="number" inputmode="decimal" min="0" step="any"></div></div>
-<div class="fgrid" id="fields"></div>
-<button class="btn" id="calc" type="button">Check safe amount</button>
-<p class="note">A re-check within 10 minutes of a scan is free. Based on a 2,000 kcal adult.</p>
+<details class="glass" id="manual"><summary>Or type the values yourself</summary>
+<p class="note" style="margin-top:0">Copy from the nutrition table, per 100 g. Leave blank what is not printed. Added sugars gives the best answer.</p>
+<div class="fgrid"><div><label for="f_name">Product name</label><input id="f_name" type="text" maxlength="80"></div><div><label for="f_serving">Serving size (g)</label><input id="f_serving" type="number" inputmode="decimal" min="0" step="any"></div></div>
+<div class="fgrid" id="fieldsMain"></div>
+<details class="more"><summary>More nutrients (optional)</summary><div class="fgrid" id="fieldsMore"></div></details>
+<button class="btn" id="calc" type="button" style="margin-top:12px">Check safe amount</button>
+<p class="note">A re-check within 10 minutes of a scan is free.</p>
+</details>
+<section class="glass" id="result" hidden>
+<h2 id="resTitle" style="margin-top:0">Your result</h2>
+<div id="resTop"></div>
+<div class="askrow"><input id="ask" type="text" maxlength="200" placeholder="Ask something (optional), like: is this ok for my kid?" aria-label="Ask something about this product"><button class="btn" id="sumBtn" type="button">Summarize with AI</button></div>
+<div class="sumbox" id="sumOut" hidden></div>
+<details class="more"><summary>See full details</summary><div id="resMore"></div></details>
+<div class="two" style="margin-top:14px"><button class="btn alt" id="editBtn" type="button">Edit values</button><a class="btn alt" href="/history">My history</a></div>
 </section>
-<section class="glass" id="result" hidden><h2 id="resTitle" style="margin-top:0">Your result</h2><div id="resBody"></div></section>
 </div>
 <div id="modal" hidden><div class="glass"><h3>You have used your free scans</h3><p>Upgrade to keep scanning without a limit.</p><a class="btn" href="/pricing">See plans</a><button class="btn alt" id="closeModal" type="button" style="margin-top:10px">Not now</button></div></div>
 </main>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your History | TruthLens</title>
+<meta name="description" content="Your saved TruthLens scans and checks."><meta name="author" content="TruthLens Team"><meta name="robots" content="noindex, follow">
+<link rel="canonical" href="{{SITE_URL}}/history">
+<meta property="og:type" content="website"><meta property="og:title" content="Your History | TruthLens"><meta property="og:description" content="Your saved TruthLens scans and checks."><meta property="og:url" content="{{SITE_URL}}/history">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/assets/style.css"></head>
+<body><div class="blob b1"></div><div class="blob b2"></div>
+{{HEADER}}
+<main class="wrap">
+<h1>Your history</h1>
+<p class="sub">Every scan and check you make is saved here.</p>
+<section class="glass" data-auth="out" hidden><h3>Sign in to see your history</h3><button class="btn" id="google" type="button">Continue with Google</button></section>
+<div data-auth="in" hidden>
+<p class="note" id="hmsg" aria-live="polite">Loading...</p>
+<div id="list"></div>
+<button class="mini" id="clearAll" type="button" hidden style="margin-top:14px">Clear all history</button>
+</div>
+</main>
+{{FOOTER}}
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/app.js"></script>
+<script src="/assets/history.js"></script>
+</body></html>

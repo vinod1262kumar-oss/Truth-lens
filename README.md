@@ -33,3 +33,10 @@ Set `LABEL_PROVIDER` in `.env` to `nvidia` (Gemma via NVIDIA) or `gemini`. For N
 - Manual entry has all common Indian label fields: energy, protein, carbohydrate, total and added sugars, total, saturated and trans fat, cholesterol, fibre, sodium or salt, serving size.
 - Answers show a verdict, safe grams, servings, a sensible single portion, and each nutrient as Low, Medium or High.
 - Camera: Take photo and From gallery buttons, bigger photo, safer AI settings. Open `/api/health` to check that your keys are set. Errors now show a short code.
+
+## Version 3
+- `/history`: every scan and check saved per user (newest first), with delete and clear all.
+- "Summarize with AI" on each result (Gemini), optional question, cached per scan, max 10 per hour per user.
+- Cleaner pages: manual form and details are collapsed; nav is Home, Scan, History, Limits.
+- Run `schema_history.sql` once in Supabase to create the `scans` table. Without it scanning still works but nothing is saved or summarized.
+- Contact email is set in `server.js` (`CONTACT_EMAIL`). A `CONTACT_EMAIL` variable in Render overrides it.

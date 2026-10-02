@@ -1,11 +1,11 @@
 (function () {
   var $ = function (i) { return document.getElementById(i); };
   var TL = window.TL = { token: null, sb: null, ready: false, subs: [] };
-  TL.api = async function (path, body) {
+  TL.api = async function (path, body, method) {
     var hd = { 'Content-Type': 'application/json' };
     if (TL.token) hd.Authorization = 'Bearer ' + TL.token;
     var r;
-    try { r = await fetch(path, { method: body ? 'POST' : 'GET', headers: hd, body: body ? JSON.stringify(body) : undefined }); }
+    try { r = await fetch(path, { method: method || (body ? 'POST' : 'GET'), headers: hd, body: body ? JSON.stringify(body) : undefined }); }
     catch (e) { return { status: 0, data: { error: 'No internet, or the server is waking up. Try again in a moment.', code: 'network' } }; }
     var d = await r.json().catch(function () { return { error: 'The server sent an unexpected reply (status ' + r.status + ').', code: 'bad_reply' }; });
     return { status: r.status, data: d };

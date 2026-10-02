@@ -11,7 +11,7 @@ const {
   LABEL_PROVIDER = 'gemini',
   GEMINI_API_KEY, GEMINI_MODEL = 'gemini-2.5-flash',
   NVIDIA_API_KEY, NVIDIA_MODEL = 'google/gemma-3n-e4b-it',
-  FREE_SCANS = '10', PORT = 3000, SITE_URL = '', CONTACT_EMAIL = '',
+  FREE_SCANS = '10', PORT = 3000, SITE_URL = '', CONTACT_EMAIL = 'Vinod1262kumar@gmail.com',
 } = process.env;
 const FREE = parseInt(FREE_SCANS, 10);
 const AI_KEY = LABEL_PROVIDER === 'nvidia' ? NVIDIA_API_KEY : GEMINI_API_KEY;
@@ -20,7 +20,6 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !AI_KEY) {
   console.error('Missing keys. Fill in the .env file (or Render Environment) first.');
   process.exit(1);
 }
-if (!CONTACT_EMAIL) console.warn('CONTACT_EMAIL is not set. Add it so the contact email shows on the site.');
 process.on('unhandledRejection', e => console.error('unhandledRejection', e));
 
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
@@ -87,6 +86,7 @@ function analyze(n) {
   if (limited.length) {
     const lim = limited[0], safe = nice(lim.raw);
     a.safe_grams = safe;
+    a.limiting = lim.name;
     a.headline = lim.name + ' runs out first. ' + safe + ' g of this product uses up the whole daily limit of ' + lim.daily + ' ' + lim.unit + ' (100 g uses ' + lim.pct + '%).';
     a.tip = lim.tip;
     a.points.push(serving
@@ -107,25 +107,27 @@ function analyze(n) {
 const PROMPT = 'Read the nutrition information table on this packaged food label (often an Indian FSSAI style label). Return JSON only with these keys: product_name (string), serving_size_g, energy_kcal, protein, carbs, total_sugars, added_sugars, total_fat, sat_fat, trans_fat, cholesterol, fibre, sodium, salt. All values are numbers per 100 g (or per 100 ml), or null if not shown. Units: energy in kcal (if only kJ, divide by 4.184), cholesterol and sodium in mg, salt and everything else in g. "Nil", "Absent" and "0" mean 0. If the table is only per serving and the serving size in g is given, convert to per 100 g. If only salt is shown, fill salt and leave sodium null. Never guess: use null when unreadable. If the image is not a nutrition label, return all nulls.';
 const aiMsg = s => (s === 400 ? 'The AI rejected the request. Check the AI key and model name.' : s === 401 || s === 403 ? 'The AI key is not valid or not allowed.' : s === 429 ? 'The AI limit is reached. Try again in a minute.' : 'The AI service had a problem. Try again.');
 
-async function callGemini(b64, mime) {
+async function geminiCall(parts, gc, system) {
+  if (!GEMINI_API_KEY) throw new AppError('no_gemini', 'Add GEMINI_API_KEY to use this feature.', 500);
   for (const model of [...new Set([GEMINI_MODEL, 'gemini-flash-latest'])]) {
-    const gc = { temperature: 0, maxOutputTokens: 4096, responseMimeType: 'application/json' };
-    if (/2\.5/.test(model)) gc.thinkingConfig = { thinkingBudget: 0 };
+    const cfg = { ...gc };
+    if (/2\.5/.test(model)) cfg.thinkingConfig = { thinkingBudget: 0 };
+    const body = { contents: [{ role: 'user', parts }], generationConfig: cfg };
+    if (system) body.systemInstruction = { parts: [{ text: system }] };
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY },
-      body: JSON.stringify({ contents: [{ parts: [{ inline_data: { mime_type: mime, data: b64 } }, { text: PROMPT }] }], generationConfig: gc }),
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY }, body: JSON.stringify(body),
     });
     if (r.status === 404) { console.error('gemini model not found:', model); continue; }
     if (!r.ok) { console.error('gemini', r.status, (await r.text()).slice(0, 300)); throw new AppError('ai_' + r.status, aiMsg(r.status), 502); }
     const d = await r.json();
-    const parts = (d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [];
-    const text = parts.map(p => p.text || '').join('');
-    if (!text.trim()) { console.error('gemini empty', JSON.stringify(d).slice(0, 300)); throw new AppError('ai_empty', 'The AI returned nothing. Try a clearer photo.', 502); }
+    const ps = (d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [];
+    const text = ps.map(p => p.text || '').join('');
+    if (!text.trim()) { console.error('gemini empty', JSON.stringify(d).slice(0, 300)); throw new AppError('ai_empty', 'The AI returned nothing. Try again.', 502); }
     return text;
   }
   throw new AppError('ai_404', 'The AI model name is wrong. Set GEMINI_MODEL to a current Gemini Flash model.', 502);
 }
+const callGemini = (b64, mime) => geminiCall([{ inline_data: { mime_type: mime, data: b64 } }, { text: PROMPT }], { temperature: 0, maxOutputTokens: 4096, responseMimeType: 'application/json' });
 async function callNvidia(b64, mime) {
   const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
     method: 'POST',
@@ -171,7 +173,21 @@ async function consume(id) {
   if (error) { console.error('increment_scans', error); throw new AppError('db', 'Scan counter failed. Run schema.sql in Supabase again.', 500); }
   return data;
 }
-const recent = new Map(); // a manual re-check within 10 minutes of a scan is free
+const recent = new Map(); // a manual re-check within 10 minutes of a scan is free (it updates that scan in history)
+async function saveScan(userId, source, n, a) {
+  try {
+    const { data, error } = await admin.from('scans').insert({ user_id: userId, source, product_name: a.product || null, safe_grams: a.safe_grams, verdict: a.verdict.level, limiting: a.limiting || null, nutrients: n, analysis: a }).select('id').single();
+    if (error) { console.error('save scan', error.message); return null; }
+    return data.id;
+  } catch (e) { console.error('save scan', e); return null; }
+}
+async function updateScan(id, n, a) {
+  if (!id) return;
+  try {
+    const { error } = await admin.from('scans').update({ product_name: a.product || null, safe_grams: a.safe_grams, verdict: a.verdict.level, limiting: a.limiting || null, nutrients: n, analysis: a, summary: null }).eq('id', id);
+    if (error) console.error('update scan', error.message);
+  } catch (e) { console.error('update scan', e); }
+}
 const LIMIT_MSG = { error: 'You have used your free scans. Upgrade to keep scanning.', code: 'limit' };
 
 /* ---------- Server ---------- */
@@ -196,19 +212,63 @@ app.post('/api/scan', auth, h(async (req, res) => {
   const analysis = analyze(nutrients);
   if (!analysis) throw new AppError('no_values', 'No sugar, fat or sodium values were found. Try a clearer photo of the nutrition table, or type the values.', 422);
   const used = await consume(req.user.id);
-  recent.set(req.user.id, Date.now());
-  res.json({ nutrients, analysis, left: leftOf(p.plan, used) });
+  const id = await saveScan(req.user.id, 'scan', nutrients, analysis);
+  recent.set(req.user.id, { t: Date.now(), id });
+  res.json({ nutrients, analysis, left: leftOf(p.plan, used), scan_id: id });
 }));
 
 app.post('/api/check', auth, h(async (req, res) => {
   const p = await getProfile(req.user.id);
-  const free = Date.now() - (recent.get(req.user.id) || 0) < 10 * 60 * 1000;
+  const rec = recent.get(req.user.id);
+  const free = !!rec && Date.now() - rec.t < 10 * 60 * 1000;
   if (!free && !allowed(p)) return res.status(402).json(LIMIT_MSG);
   const n = clean(req.body || {});
   const analysis = analyze(n);
   if (!analysis) throw new AppError('no_values', 'Enter at least one of sugar, fat, saturated fat, trans fat or sodium.', 400);
-  const used = free ? p.scans_used : await consume(req.user.id);
-  res.json({ analysis, left: leftOf(p.plan, used) });
+  let used = p.scans_used, sid = null;
+  if (free) { sid = rec.id; await updateScan(sid, n, analysis); }
+  else { used = await consume(req.user.id); sid = await saveScan(req.user.id, 'manual', n, analysis); }
+  res.json({ analysis, left: leftOf(p.plan, used), scan_id: sid });
+}));
+
+/* ---------- History and AI summary ---------- */
+const NOHIST = () => new AppError('db_history', 'History is not set up yet. Run schema_history.sql in Supabase.', 500);
+app.get('/api/history', auth, h(async (req, res) => {
+  const { data, error } = await admin.from('scans').select('id,created_at,source,product_name,safe_grams,verdict,limiting,analysis,summary').eq('user_id', req.user.id).order('created_at', { ascending: false }).limit(100);
+  if (error) { console.error('history', error.message); throw NOHIST(); }
+  res.json({ items: data });
+}));
+app.delete('/api/history/:id', auth, h(async (req, res) => {
+  if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) throw new AppError('bad_id', 'Bad id.', 400);
+  const { error } = await admin.from('scans').delete().eq('id', req.params.id).eq('user_id', req.user.id);
+  if (error) throw new AppError('db_history', 'Could not delete that item.', 500);
+  res.json({ ok: true });
+}));
+app.delete('/api/history', auth, h(async (req, res) => {
+  const { error } = await admin.from('scans').delete().eq('user_id', req.user.id);
+  if (error) throw new AppError('db_history', 'Could not clear history.', 500);
+  res.json({ ok: true });
+}));
+
+const SUM_SYSTEM = 'You are a friendly nutrition guide for packaged foods in India. Use only the numbers given and never invent numbers. Write simple English in short sentences. Use exactly these headings, each on its own line: Bottom line, What to do, Better choices. Under Bottom line write 1 or 2 sentences. Under the other two write 2 or 3 short lines, each starting with "- ". If the user asked a question, first add the heading Your question and answer it in 2 or 3 sentences. This is general guidance, not medical advice: if the user mentions a health condition, pregnancy or a young child, tell them to check with a doctor and keep the advice general. Keep the whole reply under 170 words. Plain text only, no markdown.';
+const sumLog = new Map();
+app.post('/api/summary', auth, h(async (req, res) => {
+  const uid = req.user.id, now = Date.now();
+  const hits = (sumLog.get(uid) || []).filter(t => now - t < 3600000);
+  if (hits.length >= 10) throw new AppError('rate', 'That is a lot of summaries. Please try again in a little while.', 429);
+  const { scan_id, question } = req.body || {};
+  if (!/^[0-9a-f-]{36}$/i.test(scan_id || '')) throw new AppError('no_scan', 'Scan or check something first, then summarize it.', 400);
+  const { data: row, error } = await admin.from('scans').select('id,product_name,analysis,summary').eq('id', scan_id).eq('user_id', uid).maybeSingle();
+  if (error) { console.error('summary', error.message); throw NOHIST(); }
+  if (!row) throw new AppError('no_scan', 'Could not find that scan in your history.', 404);
+  const q = typeof question === 'string' ? question.trim().slice(0, 200) : '';
+  if (row.summary && !q) return res.json({ summary: row.summary });
+  sumLog.set(uid, [...hits, now]);
+  const a = row.analysis || {};
+  const facts = 'Product: ' + String(row.product_name || 'unknown').slice(0, 60) + '\nVerdict: ' + a.verdict.title + ' (' + a.verdict.text + ')\nSafe amount today: ' + (a.safe_grams != null ? a.safe_grams + ' g, limiting nutrient: ' + a.limiting : 'no daily limit is reached') + '\nPer 100 g:\n' + (a.rows || []).map(r => '- ' + r.name + ': ' + r.per100 + ' ' + r.unit + ' (' + r.level + ', ' + r.pct + '% of the daily limit)').join('\n') + (a.info && a.info.length ? '\nAlso on the label: ' + a.info.join(', ') : '') + (q ? '\nUser question: ' + q : '');
+  const summary = (await geminiCall([{ text: facts }], { temperature: 0.4, maxOutputTokens: 2048 }, SUM_SYSTEM)).trim();
+  if (!q) await admin.from('scans').update({ summary }).eq('id', row.id);
+  res.json({ summary });
 }));
 
 /* ---------- Pages with shared header and footer ---------- */
@@ -221,8 +281,8 @@ async function find(name) {
   }
   throw new Error('File not found: ' + name);
 }
-const PAGES = { '/': 'index.html', '/scan': 'scan.html', '/limits': 'limits.html', '/pricing': 'pricing.html', '/contact': 'contact.html', '/privacy': 'privacy.html', '/terms': 'terms.html', '/llms.txt': 'llms.txt', '/robots.txt': 'robots.txt', '/sitemap.xml': 'sitemap.xml' };
-const ASSETS = { '/assets/style.css': ['style.css', 'text/css; charset=utf-8'], '/assets/app.js': ['app.js', 'application/javascript; charset=utf-8'], '/assets/scan.js': ['scan.js', 'application/javascript; charset=utf-8'] };
+const PAGES = { '/': 'index.html', '/scan': 'scan.html', '/history': 'history.html', '/limits': 'limits.html', '/pricing': 'pricing.html', '/contact': 'contact.html', '/privacy': 'privacy.html', '/terms': 'terms.html', '/llms.txt': 'llms.txt', '/robots.txt': 'robots.txt', '/sitemap.xml': 'sitemap.xml' };
+const ASSETS = { '/assets/style.css': ['style.css', 'text/css; charset=utf-8'], '/assets/app.js': ['app.js', 'application/javascript; charset=utf-8'], '/assets/scan.js': ['scan.js', 'application/javascript; charset=utf-8'], '/assets/history.js': ['history.js', 'application/javascript; charset=utf-8'] };
 const TYPES = { '.html': 'text/html; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8' };
 const read = async f => fs.readFile(await find(f), 'utf8');
 app.get(Object.keys(PAGES), async (req, res) => {
