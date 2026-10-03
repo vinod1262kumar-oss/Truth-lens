@@ -40,3 +40,12 @@ Set `LABEL_PROVIDER` in `.env` to `nvidia` (Gemma via NVIDIA) or `gemini`. For N
 - Cleaner pages: manual form and details are collapsed; nav is Home, Scan, History, Limits.
 - `schema.sql` creates both the account/scan-counter tables and the `scans` history table. If you already installed an older version, run `schema_history.sql` once in Supabase to add/fix history.
 - Contact email is set in `server.js` (`CONTACT_EMAIL`). A `CONTACT_EMAIL` variable in Render overrides it.
+
+
+## Version 4 — Blue UI, login experience and Durva
+- Added `/login` with a 3D chips-packet mascot. The initial state shows the back of the packet; focusing the email field or starting Google/email login flips to the front mascot and Google badge.
+- Added email magic-link sign-in and retained Google OAuth through Supabase.
+- Replaced the gold visual theme with a blue/white glassmorphism theme.
+- Added floating Durva assistant, powered by the existing Gemini API key. Durva can scan nutrition labels with the existing OCR endpoint, answer label questions, and generate balanced food-routine plans and simple tasks.
+- Durva intentionally avoids calorie targets, weight-loss plans, fasting/extreme restriction and medical diagnosis. It is general nutrition guidance.
+- Added `assets/chips-mascot.png` for the login mascot.

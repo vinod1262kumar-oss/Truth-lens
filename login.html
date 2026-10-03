@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in | TruthLens</title>
+<meta name="description" content="Sign in to TruthLens and use Durva, the food-label OCR and nutrition planning assistant.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<div class="blob b1"></div><div class="blob b2"></div>
+{{HEADER}}
+<main class="login-shell">
+<section class="login-card" aria-label="TruthLens sign in">
+  <div class="login-visual">
+    <div class="mascot-stage" id="mascotStage">
+      <div class="login-badge" id="googleBadge">
+        <svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#4285F4" d="M21.35 12.23c0-.72-.06-1.25-.2-1.82H12v3.45h5.37a4.58 4.58 0 0 1-1.99 3.01v2.5h3.22c1.88-1.73 2.75-4.28 2.75-7.14z"/>
+          <path fill="#34A853" d="M12 21.9c2.7 0 4.97-.9 6.63-2.44l-3.22-2.5c-.9.6-2.05.96-3.41.96-2.62 0-4.84-1.77-5.63-4.15H3.04v2.58A10.01 10.01 0 0 0 12 21.9z"/>
+          <path fill="#FBBC05" d="M6.37 13.77A6.02 6.02 0 0 1 6.05 12c0-.62.11-1.22.32-1.77V7.65H3.04A9.99 9.99 0 0 0 2 12c0 1.61.39 3.13 1.04 4.35l3.33-2.58z"/>
+          <path fill="#EA4335" d="M12 6.08c1.47 0 2.79.5 3.83 1.49l2.87-2.87C16.97 3.01 14.7 2.1 12 2.1a10.01 10.01 0 0 0-8.96 5.55l3.33 2.58C7.16 7.85 9.38 6.08 12 6.08z"/>
+        </svg> Google ready
+      </div>
+      <div class="mascot-back" aria-hidden="true">
+        <div class="back-bag">
+          <div class="mascot-limb arm-l"></div><div class="mascot-limb arm-r"></div>
+          <div class="mascot-limb leg-l"></div><div class="mascot-limb leg-r"></div>
+          <div class="shoe l"></div><div class="shoe r"></div><div class="back-seam"></div>
+        </div>
+        <div class="back-copy">Turn around to meet your TruthLens snack buddy</div>
+      </div>
+      <div class="mascot-front">
+        <img src="/assets/chips-mascot.png" alt="3D cartoon chips packet mascot">
+      </div>
+    </div>
+  </div>
+  <div class="login-copy">
+    <div class="login-brand">TruthLens</div>
+    <h1>Welcome back.</h1>
+    <p class="sub">Scan labels with OCR, then ask Durva for simple food insights, balanced meal ideas and everyday tasks.</p>
+    <form class="login-form" id="loginForm">
+      <label for="email">Email address</label>
+      <input id="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+      <button class="btn" id="emailBtn" type="submit">Continue with email</button>
+      <div class="login-or"><span>or</span></div>
+      <button class="btn alt google-btn" id="googleLogin" type="button">
+        <svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#4285F4" d="M21.35 12.23c0-.72-.06-1.25-.2-1.82H12v3.45h5.37a4.58 4.58 0 0 1-1.99 3.01v2.5h3.22c1.88-1.73 2.75-4.28 2.75-7.14z"/>
+          <path fill="#34A853" d="M12 21.9c2.7 0 4.97-.9 6.63-2.44l-3.22-2.5c-.9.6-2.05.96-3.41.96-2.62 0-4.84-1.77-5.63-4.15H3.04v2.58A9.99 9.99 0 0 0 12 21.9z"/>
+          <path fill="#FBBC05" d="M6.37 13.77A6.02 6.02 0 0 1 6.05 12c0-.62.11-1.22.32-1.77V7.65H3.04A9.99 9.99 0 0 0 2 12c0 1.61.39 3.13 1.04 4.35l3.33-2.58z"/>
+          <path fill="#EA4335" d="M12 6.08c1.47 0 2.79.5 3.83 1.49l2.87-2.87C16.97 3.01 14.7 2.1 12 2.1a10.01 10.01 0 0 0-8.96 5.55l3.33 2.58C7.16 7.85 9.38 6.08 12 6.08z"/>
+        </svg>
+        Continue with Google
+      </button>
+      <div class="login-status" id="loginStatus" aria-live="polite"></div>
+    </form>
+    <p class="note">Email sign-in uses a Supabase magic link. Google sign-in requires the Google provider to be enabled in Supabase.</p>
+  </div>
+</section>
+</main>
+{{FOOTER}}
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/app.js"></script>
+<script src="/assets/login.js"></script>
+</body>
+</html>

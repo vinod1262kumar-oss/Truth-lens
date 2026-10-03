@@ -7,4 +7,4 @@
 <url><loc>{{SITE_URL}}/contact</loc></url>
 <url><loc>{{SITE_URL}}/privacy</loc></url>
 <url><loc>{{SITE_URL}}/terms</loc></url>
-</urlset>
+<url><loc>{{SITE_URL}}/login</loc></url></urlset>
