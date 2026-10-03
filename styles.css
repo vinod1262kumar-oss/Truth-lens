@@ -1167,3 +1167,11 @@ textarea:focus-visible {
   }
 
 }
+
+/* Durva global launcher + parrot-green theme */
+:root{--parrot-green:#7CFC00;--parrot-green-dark:#4f9f00}
+.durva-fab{position:fixed;right:22px;bottom:22px;z-index:9999;display:flex;align-items:center;gap:9px;padding:9px 15px 9px 9px;border-radius:999px;text-decoration:none;background:rgba(255,255,255,.82);color:#173000!important;border:1px solid rgba(79,159,0,.22);box-shadow:0 12px 35px rgba(25,60,10,.18),inset 0 1px 0 rgba(255,255,255,.9);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);font-weight:800}
+.durva-fab-icon{width:44px;height:44px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#b8ff73,var(--parrot-green));box-shadow:0 6px 18px rgba(80,160,0,.2);font-size:20px}
+.durva-fab-label{font-size:14px}
+.durva-fab:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(25,60,10,.22)}
+@media(max-width:520px){.durva-fab{right:14px;bottom:14px}.durva-fab-label{display:none}.durva-fab{padding:6px}.durva-fab-icon{width:50px;height:50px}}

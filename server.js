@@ -109,6 +109,15 @@ const PROMPT = 'Read the nutrition information table on this packaged food label
 const aiMsg = s => (s === 400 ? 'The AI rejected the request. Check the AI key and model name.' : s === 401 || s === 403 ? 'The AI key is not valid or not allowed.' : s === 429 ? 'The AI limit is reached. Try again in a minute.' : 'The AI service had a problem. Try again.');
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function fetchWithTimeout(url, options, ms = 30000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try { return await fetch(url, { ...options, signal: controller.signal }); }
+  catch (e) {
+    if (e && e.name === 'AbortError') throw new AppError('ai_timeout', 'Durva took too long to respond. Please try again.', 504);
+    throw e;
+  } finally { clearTimeout(timer); }
+}
 async function geminiCall(parts, gc, system) {
   if (!GEMINI_API_KEY) throw new AppError('no_gemini', 'Add GEMINI_API_KEY to use this feature.', 500);
   let lastStatus = 0;
@@ -119,7 +128,7 @@ async function geminiCall(parts, gc, system) {
     const body = { contents: [{ role: 'user', parts }], generationConfig: cfg };
     if (system) body.systemInstruction = { parts: [{ text: system }] };
     for (let attempt = 0; attempt < 2; attempt++) {
-      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+      const r = await fetchWithTimeout('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
         method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY }, body: JSON.stringify(body),
       });
       if (r.status === 404) { console.error('gemini model not found:', model); lastStatus = 404; break; }
@@ -268,11 +277,27 @@ const sumLog = new Map();
 const durvaLog = new Map();
 const DURVA_SYSTEM = `You are Durva, the friendly general health and wellness assistant inside TruthLens.
 Help with balanced nutrition, packaged-food labels, exercise, strength training, mobility, recovery, sleep, hydration and everyday wellness.
-The user may be a teenager. Never recommend starvation, fasting for weight loss, calorie restriction, purging, diet pills, unsafe supplements, over-exercising, body-comparison goals, or rapid weight loss. Do not judge body shape or appearance.
+The user may be a teenager. Never recommend starvation, fasting for weight loss, calorie restriction, purging, diet pills, unsafe supplements, body-comparison goals, rapid weight loss, or over-exercising.
 For food planning, emphasize regular balanced meals, variety, adequate energy, protein, carbohydrates, healthy fats, fruits/vegetables and water. For exercise, emphasize age-appropriate gradual activity, technique, rest and stopping if there is pain, dizziness or injury.
 Do not diagnose diseases or prescribe medicines. For serious symptoms, injury, eating concerns, medication questions, or persistent health problems, advise speaking with a parent/guardian and an appropriate qualified health professional.
-Answer the user's actual question directly in simple language. If asked for a plan, give a practical plan with sensible flexibility. Do not claim that one food is universally healthy or unhealthy. Keep normal answers under 350 words unless a detailed plan needs more.
-Plain text is preferred; simple headings and bullet points are okay.`;
+Answer the user's actual question directly in simple language. If asked for a plan, give a practical flexible plan. Do not claim that one food is universally healthy or unhealthy.
+Keep normal answers under 350 words unless a detailed plan needs more. Plain text is preferred; simple headings and bullets are okay.`;
+
+app.get('/api/durva/history', auth, h(async (req, res) => {
+  const { data, error } = await admin.from('durva_messages').select('id,role,message,created_at').eq('user_id', req.user.id).order('created_at', { ascending: true }).limit(100);
+  if (error) {
+    // The feature remains usable even before the optional table is created.
+    console.error('durva history:', error.message);
+    return res.json({ items: [], persistent: false });
+  }
+  res.json({ items: data || [], persistent: true });
+}));
+
+app.delete('/api/durva/history', auth, h(async (req, res) => {
+  const { error } = await admin.from('durva_messages').delete().eq('user_id', req.user.id);
+  if (error) throw new AppError('durva_history', 'Could not clear Durva history. Run durva_schema.sql in Supabase.', 500);
+  res.json({ ok: true });
+}));
 
 app.post('/api/durva', auth, h(async (req, res) => {
   const uid = req.user.id, now = Date.now();
@@ -280,14 +305,28 @@ app.post('/api/durva', auth, h(async (req, res) => {
   if (hits.length >= 30) throw new AppError('durva_rate', 'Durva has reached its hourly message limit. Please try again later.', 429);
   const message = typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 1200) : '';
   if (!message) throw new AppError('durva_empty', 'Type a question for Durva.', 400);
-  const rawHistory = Array.isArray(req.body?.history) ? req.body.history.slice(-12) : [];
-  const safeHistory = rawHistory.filter(x => x && (x.role === 'user' || x.role === 'model') && typeof x.text === 'string').map(x => ({ role:x.role, parts:[{text:x.text.slice(0,1200)}] }));
+
+  let safeHistory = [];
+  const db = await admin.from('durva_messages').select('role,message').eq('user_id', uid).order('created_at', { ascending: false }).limit(12);
+  if (!db.error && db.data) safeHistory = db.data.reverse().map(x => ({ role: x.role, text: x.message }));
+  if (!safeHistory.length && Array.isArray(req.body?.history)) {
+    safeHistory = req.body.history.slice(-12).filter(x => x && (x.role === 'user' || x.role === 'model') && typeof x.text === 'string').map(x => ({ role:x.role, text:x.text.slice(0,1200) }));
+  }
+
   const parts = [];
-  if (safeHistory.length) parts.push({ text: 'Conversation context:\n' + safeHistory.map(x => (x.role === 'user' ? 'User: ' : 'Durva: ') + x.parts[0].text).join('\n') });
+  if (safeHistory.length) parts.push({ text: 'Conversation context:\n' + safeHistory.map(x => (x.role === 'user' ? 'User: ' : 'Durva: ') + x.text).join('\n') });
   parts.push({ text: 'User: ' + message });
   durvaLog.set(uid, [...hits, now]);
+
   const answer = (await geminiCall(parts, { temperature: 0.45, maxOutputTokens: 2500 }, DURVA_SYSTEM)).trim();
-  res.json({ answer });
+  if (!answer) throw new AppError('durva_empty_ai', 'Durva returned an empty response. Please try again.', 502);
+
+  const ins = await admin.from('durva_messages').insert([
+    { user_id: uid, role: 'user', message },
+    { user_id: uid, role: 'model', message: answer.slice(0, 1200) }
+  ]);
+  if (ins.error) console.error('durva save:', ins.error.message);
+  res.json({ answer, persistent: !ins.error });
 }));
 
 app.post('/api/summary', auth, h(async (req, res) => {
@@ -320,7 +359,7 @@ async function find(name) {
   throw new Error('File not found: ' + name);
 }
 const PAGES = { '/': 'index.html', '/durva': 'durva.html', '/scan': 'scan.html', '/history': 'history.html', '/limits': 'limits.html', '/pricing': 'pricing.html', '/contact': 'contact.html', '/privacy': 'privacy.html', '/terms': 'terms.html', '/llms.txt': 'llms.txt', '/robots.txt': 'robots.txt', '/sitemap.xml': 'sitemap.xml' };
-const ASSETS = { '/assets/durva.css': ['durva.css', 'text/css; charset=utf-8'], '/assets/durva.js': ['durva.js', 'application/javascript; charset=utf-8'], '/assets/style.css': ['style.css', 'text/css; charset=utf-8'], '/assets/app.js': ['app.js', 'application/javascript; charset=utf-8'], '/assets/scan.js': ['scan.js', 'application/javascript; charset=utf-8'], '/assets/history.js': ['history.js', 'application/javascript; charset=utf-8'] };
+const ASSETS = { '/assets/durva.css': ['durva.css', 'text/css; charset=utf-8'], '/assets/durva.js': ['durva.js', 'application/javascript; charset=utf-8'], '/assets/style.css': ['styles.css', 'text/css; charset=utf-8'], '/assets/app.js': ['app.js', 'application/javascript; charset=utf-8'], '/assets/scan.js': ['scan.js', 'application/javascript; charset=utf-8'], '/assets/history.js': ['history.js', 'application/javascript; charset=utf-8'] };
 const TYPES = { '.html': 'text/html; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8' };
 const read = async f => fs.readFile(await find(f), 'utf8');
 app.get(Object.keys(PAGES), async (req, res) => {

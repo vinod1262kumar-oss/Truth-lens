@@ -50,13 +50,26 @@
   var style = document.createElement('style');
   style.textContent = ':root{--parrot-green:#7CFC00;--parrot-green-dark:#4f9f00}.durva-fab,.durva-button{background:var(--parrot-green)!important;color:#173000!important;border-color:rgba(79,159,0,.25)!important}.durva-fab:hover,.durva-button:hover{filter:saturate(1.05) brightness(.97);box-shadow:0 10px 28px rgba(80,160,0,.25)}';
   document.head.appendChild(style);
-  document.addEventListener('click', function (e) {
-    var el = e.target.closest('a,button,[role="button"],.durva-fab');
-    if (!el) return;
-    var label = ((el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('title') || '') + ' ' + (el.textContent || '')).trim().toLowerCase();
-    if (label.indexOf('durva') !== -1 && location.pathname !== '/durva') {
-      e.preventDefault();
-      location.href = '/durva';
-    }
-  });
+  function addLauncher() {
+    if (location.pathname === '/durva' || document.querySelector('.durva-fab')) return;
+    var a = document.createElement('a');
+    a.className = 'durva-fab';
+    a.href = '/durva';
+    a.setAttribute('aria-label', 'Open Durva health and wellness assistant');
+    a.title = 'Ask Durva';
+    a.innerHTML = '<span class="durva-fab-icon">D</span><span class="durva-fab-label">Durva</span>';
+    document.body.appendChild(a);
+  }
+  function wire() {
+    addLauncher();
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest('a,button,[role="button"],.durva-fab');
+      if (!el) return;
+      var label = ((el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('title') || '') + ' ' + (el.textContent || '')).trim().toLowerCase();
+      if (label.indexOf('durva') !== -1 && location.pathname !== '/durva') {
+        e.preventDefault(); location.href = '/durva';
+      }
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
 })();
