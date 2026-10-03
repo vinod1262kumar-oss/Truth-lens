@@ -16,7 +16,8 @@
   };
   TL.signIn = function () {
     try { localStorage.setItem('tl_next', '/scan'); } catch (e) {}
-    TL.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin } });
+    if (location.pathname !== '/login') { location.href = '/login'; return; }
+    if (TL.sb) TL.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/login' } });
   };
   TL.onAuth = function (fn) { TL.subs.push(fn); if (TL.ready) fn(!!TL.token); };
   function apply(s) {
@@ -42,34 +43,13 @@
     } catch (e) { TL.ready = true; TL.subs.forEach(function (fn) { fn(false); }); }
   }
   init();
-})();
 
-
-/* ---------- Durva launcher + parrot-green accent ---------- */
-(function () {
-  var style = document.createElement('style');
-  style.textContent = ':root{--parrot-green:#7CFC00;--parrot-green-dark:#4f9f00}.durva-fab,.durva-button{background:var(--parrot-green)!important;color:#173000!important;border-color:rgba(79,159,0,.25)!important}.durva-fab:hover,.durva-button:hover{filter:saturate(1.05) brightness(.97);box-shadow:0 10px 28px rgba(80,160,0,.25)}';
-  document.head.appendChild(style);
-  function addLauncher() {
-    if (location.pathname === '/durva' || document.querySelector('.durva-fab')) return;
-    var a = document.createElement('a');
-    a.className = 'durva-fab';
-    a.href = '/durva';
-    a.setAttribute('aria-label', 'Open Durva health and wellness assistant');
-    a.title = 'Ask Durva';
-    a.innerHTML = '<span class="durva-fab-icon">D</span><span class="durva-fab-label">Durva</span>';
+  /* Durva launcher: dedicated assistant page */
+  (function(){
+    var a=document.createElement('a');
+    a.id='durvaLaunch'; a.className='durva-launch'; a.href='/durva';
+    a.setAttribute('aria-label','Open Durva health and wellness assistant');
+    a.innerHTML='<span>Durva</span>';
     document.body.appendChild(a);
-  }
-  function wire() {
-    addLauncher();
-    document.addEventListener('click', function (e) {
-      var el = e.target.closest('a,button,[role="button"],.durva-fab');
-      if (!el) return;
-      var label = ((el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('title') || '') + ' ' + (el.textContent || '')).trim().toLowerCase();
-      if (label.indexOf('durva') !== -1 && location.pathname !== '/durva') {
-        e.preventDefault(); location.href = '/durva';
-      }
-    });
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+  })();
 })();

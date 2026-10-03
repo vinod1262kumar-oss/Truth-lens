@@ -1,48 +1,30 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#7CFC00">
-  <title>Durva — Health & Wellness Assistant | TruthLens</title>
-  <link rel="stylesheet" href="/assets/durva.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#7CFC00">
+<title>Durva — Health & Wellness Assistant | TruthLens</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="/assets/style.css"><link rel="stylesheet" href="/assets/durva.css">
 </head>
-<body>
-  <main class="durva-shell">
-    <header class="durva-topbar">
-      <a class="back" href="/">← TruthLens</a>
-      <div class="brand"><span class="brand-dot">D</span><div><strong>Durva</strong><small>Health & Wellness AI</small></div></div>
-      <div class="account"><span id="loginStatus">Checking…</span><button id="signIn" hidden>Sign in</button></div>
-    </header>
-
-    <section class="hero-card">
-      <div class="hero-icon">D</div>
-      <div><h1>Ask Durva</h1><p>Your everyday assistant for food, nutrition, workouts, recovery, sleep, hydration and wellness routines.</p></div>
-    </section>
-
-    <div class="quick-actions">
-      <button data-prompt="Create a practical 5-day balanced meal plan with normal foods and flexible options.">🥗 Make a plan</button>
-      <button data-prompt="Create a safe beginner gym and home workout routine focused on strength, mobility, technique and rest.">🏋️ Workout</button>
-      <button data-prompt="Create simple daily wellness tasks for sleep, hydration, movement and regular meals.">✓ Create tasks</button>
-      <button id="scanBtn">📸 Scan label</button>
-      <button id="clearBtn" class="secondary">Clear chat</button>
+<body><div class="blob b1"></div><div class="blob b2"></div>
+{{HEADER}}
+<main class="durva-page wrap">
+  <section class="durva-hero glass"><div class="durva-avatar-large">D</div><div><p class="durva-kicker">TRUTHLENS ASSISTANT</p><h1>Ask Durva</h1><p class="sub">Food labels, nutrition, everyday wellness, simple routines and general exercise questions — in one place.</p></div></section>
+  <section class="durva-chat glass">
+    <div class="durva-messages" id="durvaMessages"><div class="durva-msg ai">Hi! I’m Durva. I can explain food labels, suggest balanced meal ideas, create simple wellness tasks, and answer general exercise questions.</div></div>
+    <div class="durva-tools">
+      <button type="button" class="durva-tool" id="durvaScan">📷 Scan label</button>
+      <button type="button" class="durva-tool" data-q="Give me a balanced meal idea for a school day.">🥗 Meal idea</button>
+      <button type="button" class="durva-tool" data-q="Create a few simple wellness tasks for today.">✓ Create tasks</button>
+      <button type="button" class="durva-tool" data-q="Give me a safe beginner-friendly exercise routine without weight-loss goals.">🏃 Exercise</button>
     </div>
-
-    <section id="scanPanel" class="scan-panel" hidden>
-      <div><strong>Scan a nutrition label</strong><small>Take a clear photo of the nutrition table. Durva will use TruthLens OCR/AI analysis.</small></div>
-      <input id="labelInput" type="file" accept="image/*" capture="environment">
-      <div id="scanResult" class="scan-result" hidden></div>
-    </section>
-
-    <section id="chat" class="chat" aria-live="polite"></section>
-
-    <form id="composer" class="composer">
-      <textarea id="prompt" rows="1" maxlength="1200" placeholder="Ask Durva…" autocomplete="off"></textarea>
-      <button type="submit" aria-label="Send">→</button>
-    </form>
-    <p class="disclaimer">Durva provides general wellness information, not diagnosis or medical treatment. For pain, injury, illness, medication questions or persistent concerns, speak with a parent/guardian and a qualified health professional.</p>
-  </main>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/assets/durva.js" defer></script>
-</body>
-</html>
+    <input id="durvaFile" class="durva-scan" type="file" accept="image/*" capture="environment">
+    <form class="durva-input" id="durvaForm"><input id="durvaInput" maxlength="1200" autocomplete="off" placeholder="Ask Durva…"><button class="durva-send" type="submit">→</button></form>
+    <div id="durvaPlanOut" class="durva-plan" hidden></div>
+  </section>
+  <p class="durva-note">Durva provides general wellness information, not diagnosis or treatment. For illness, injury, medication, or other medical concerns, talk with a parent/guardian and a qualified health professional.</p>
+</main>
+{{FOOTER}}
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/assets/app.js"></script><script src="/assets/durva.js" defer></script>
+</body></html>

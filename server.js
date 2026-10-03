@@ -51,7 +51,6 @@ function clean(n) {
   }
   return o;
 }
-const pc = p => (p > 999 ? 'over 999' : p);
 const r1 = v => Math.round(v * 10) / 10;
 const nice = g => (g >= 100 ? Math.floor(g / 10) * 10 : g >= 20 ? Math.floor(g / 5) * 5 : Math.floor(g));
 const lvl = (v, lo, hi) => (v <= lo ? 'low' : v > hi ? 'high' : 'medium');
@@ -69,7 +68,7 @@ function analyze(n) {
     const pct = Math.round(v / d.daily * 100);
     const raw = v > 0 ? d.daily / (v / 100) : null;
     const level = lvl(v, d.low, d.high);
-    let text = r1(v) + ' ' + d.unit + ' per 100 g. 100 g uses ' + pc(pct) + '% of the daily limit (' + d.daily + ' ' + d.unit + ').';
+    let text = r1(v) + ' ' + d.unit + ' per 100 g. 100 g uses ' + pct + '% of the daily limit (' + d.daily + ' ' + d.unit + ').';
     if (raw !== null) text += ' Up to about ' + nice(raw) + ' g fits in today.';
     if (serving) text += ' One ' + serving + ' g serving uses ' + Math.round(serving * v / 100 / d.daily * 100) + '%.';
     rows.push({ key: d.key, name: d.name, level, raw, text, tip: d.tip, unit: d.unit, daily: d.daily, per100: r1(v), pct });
@@ -88,7 +87,7 @@ function analyze(n) {
     const lim = limited[0], safe = nice(lim.raw);
     a.safe_grams = safe;
     a.limiting = lim.name;
-    a.headline = lim.name + ' runs out first. ' + safe + ' g of this product uses up the whole daily limit of ' + lim.daily + ' ' + lim.unit + ' (100 g uses ' + pc(lim.pct) + '%).';
+    a.headline = lim.name + ' runs out first. ' + safe + ' g of this product uses up the whole daily limit of ' + lim.daily + ' ' + lim.unit + ' (100 g uses ' + lim.pct + '%).';
     a.tip = lim.tip;
     a.points.push(serving
       ? (safe >= serving ? 'That is about ' + Math.floor(safe / serving * 2) / 2 + ' serving(s) of ' + serving + ' g, if nothing else you eat today has ' + lim.name.toLowerCase() + '.' : 'Even one serving (' + serving + ' g) is more than the daily ' + lim.name.toLowerCase() + ' limit allows.')
@@ -106,47 +105,27 @@ function analyze(n) {
 
 /* ---------- AI label reading ---------- */
 const PROMPT = 'Read the nutrition information table on this packaged food label (often an Indian FSSAI style label). Return JSON only with these keys: product_name (string), serving_size_g, energy_kcal, protein, carbs, total_sugars, added_sugars, total_fat, sat_fat, trans_fat, cholesterol, fibre, sodium, salt. All values are numbers per 100 g (or per 100 ml), or null if not shown. Units: energy in kcal (if only kJ, divide by 4.184), cholesterol and sodium in mg, salt and everything else in g. "Nil", "Absent" and "0" mean 0. If the table is only per serving and the serving size in g is given, convert to per 100 g. If only salt is shown, fill salt and leave sodium null. Never guess: use null when unreadable. If the image is not a nutrition label, return all nulls.';
-const aiMsg = s => (s === 400 ? 'The AI rejected the request. Check the AI key and model name.' : s === 401 || s === 403 ? 'The AI key is not valid or not allowed.' : s === 429 ? 'The AI limit is reached. Try again in a minute.' : 'The AI service had a problem. Try again.');
+const aiMsg = s => (s === 400 ? 'The AI rejected the request. Check the AI key and model name.' : s === 401 || s === 403 ? 'The AI key is not valid or not allowed.' : s === 404 ? 'The selected Gemini model is unavailable. Set GEMINI_MODEL to a current Gemini Flash model.' : s === 429 ? 'Gemini is temporarily rate-limited. Please wait a moment and try again.' : s >= 500 ? 'Gemini is temporarily unavailable. Please try again in a moment.' : 'The AI service could not complete that request.');
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-async function fetchWithTimeout(url, options, ms = 30000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try { return await fetch(url, { ...options, signal: controller.signal }); }
-  catch (e) {
-    if (e && e.name === 'AbortError') throw new AppError('ai_timeout', 'Durva took too long to respond. Please try again.', 504);
-    throw e;
-  } finally { clearTimeout(timer); }
-}
 async function geminiCall(parts, gc, system) {
   if (!GEMINI_API_KEY) throw new AppError('no_gemini', 'Add GEMINI_API_KEY to use this feature.', 500);
-  let lastStatus = 0;
-  // If one model is busy (503) or missing (404), retry once, then try the next model.
-  for (const model of [...new Set([GEMINI_MODEL, 'gemini-flash-latest', 'gemini-2.5-flash-lite'])]) {
+  for (const model of [...new Set([GEMINI_MODEL, 'gemini-flash-latest'])]) {
     const cfg = { ...gc };
     if (/2\.5/.test(model)) cfg.thinkingConfig = { thinkingBudget: 0 };
     const body = { contents: [{ role: 'user', parts }], generationConfig: cfg };
     if (system) body.systemInstruction = { parts: [{ text: system }] };
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const r = await fetchWithTimeout('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
-        method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY }, body: JSON.stringify(body),
-      });
-      if (r.status === 404) { console.error('gemini model not found:', model); lastStatus = 404; break; }
-      if ([429, 500, 502, 503, 504].includes(r.status)) {
-        lastStatus = r.status; console.error('gemini busy', r.status, model);
-        if (attempt === 0) await sleep(1500);
-        continue;
-      }
-      if (!r.ok) { console.error('gemini', r.status, (await r.text()).slice(0, 300)); throw new AppError('ai_' + r.status, aiMsg(r.status), 502); }
-      const d = await r.json();
-      const ps = (d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [];
-      const text = ps.map(p => p.text || '').join('');
-      if (!text.trim()) { console.error('gemini empty', JSON.stringify(d).slice(0, 300)); throw new AppError('ai_empty', 'The AI returned nothing. Try again.', 502); }
-      return text;
-    }
+    const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 30000);
+    let r; try { r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY }, body: JSON.stringify(body), signal: controller.signal,
+    }); } catch (e) { if (e && e.name === 'AbortError') throw new AppError('ai_timeout', 'Gemini took too long to respond. Please try again.', 504); throw new AppError('ai_network', 'Could not reach Gemini. Check the server network and try again.', 502); } finally { clearTimeout(timer); }
+    if (r.status === 404) { console.error('gemini model not found:', model); continue; }
+    if (!r.ok) { console.error('gemini', r.status, (await r.text()).slice(0, 300)); throw new AppError('ai_' + r.status, aiMsg(r.status), 502); }
+    const d = await r.json();
+    const ps = (d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [];
+    const text = ps.map(p => p.text || '').join('');
+    if (!text.trim()) { console.error('gemini empty', JSON.stringify(d).slice(0, 300)); throw new AppError('ai_empty', 'The AI returned nothing. Try again.', 502); }
+    return text;
   }
-  if (lastStatus === 429) throw new AppError('ai_429', aiMsg(429), 503);
-  if (lastStatus && lastStatus !== 404) throw new AppError('ai_' + lastStatus, 'Google\'s AI is busy right now. Please try again in a minute.', 503);
   throw new AppError('ai_404', 'The AI model name is wrong. Set GEMINI_MODEL to a current Gemini Flash model.', 502);
 }
 const callGemini = (b64, mime) => geminiCall([{ inline_data: { mime_type: mime, data: b64 } }, { text: PROMPT }], { temperature: 0, maxOutputTokens: 4096, responseMimeType: 'application/json' });
@@ -274,61 +253,6 @@ app.delete('/api/history', auth, h(async (req, res) => {
 
 const SUM_SYSTEM = 'You are a friendly nutrition guide for packaged foods in India. Use only the numbers given and never invent numbers. Write simple English in short sentences. Use exactly these headings, each on its own line: Bottom line, What to do, Better choices. Under Bottom line write 1 or 2 sentences. Under the other two write 2 or 3 short lines, each starting with "- ". If the user asked a question, first add the heading Your question and answer it in 2 or 3 sentences. This is general guidance, not medical advice: if the user mentions a health condition, pregnancy or a young child, tell them to check with a doctor and keep the advice general. Keep the whole reply under 170 words. Plain text only, no markdown.';
 const sumLog = new Map();
-const durvaLog = new Map();
-const DURVA_SYSTEM = `You are Durva, the friendly general health and wellness assistant inside TruthLens.
-Help with balanced nutrition, packaged-food labels, exercise, strength training, mobility, recovery, sleep, hydration and everyday wellness.
-The user may be a teenager. Never recommend starvation, fasting for weight loss, calorie restriction, purging, diet pills, unsafe supplements, body-comparison goals, rapid weight loss, or over-exercising.
-For food planning, emphasize regular balanced meals, variety, adequate energy, protein, carbohydrates, healthy fats, fruits/vegetables and water. For exercise, emphasize age-appropriate gradual activity, technique, rest and stopping if there is pain, dizziness or injury.
-Do not diagnose diseases or prescribe medicines. For serious symptoms, injury, eating concerns, medication questions, or persistent health problems, advise speaking with a parent/guardian and an appropriate qualified health professional.
-Answer the user's actual question directly in simple language. If asked for a plan, give a practical flexible plan. Do not claim that one food is universally healthy or unhealthy.
-Keep normal answers under 350 words unless a detailed plan needs more. Plain text is preferred; simple headings and bullets are okay.`;
-
-app.get('/api/durva/history', auth, h(async (req, res) => {
-  const { data, error } = await admin.from('durva_messages').select('id,role,message,created_at').eq('user_id', req.user.id).order('created_at', { ascending: true }).limit(100);
-  if (error) {
-    // The feature remains usable even before the optional table is created.
-    console.error('durva history:', error.message);
-    return res.json({ items: [], persistent: false });
-  }
-  res.json({ items: data || [], persistent: true });
-}));
-
-app.delete('/api/durva/history', auth, h(async (req, res) => {
-  const { error } = await admin.from('durva_messages').delete().eq('user_id', req.user.id);
-  if (error) throw new AppError('durva_history', 'Could not clear Durva history. Run durva_schema.sql in Supabase.', 500);
-  res.json({ ok: true });
-}));
-
-app.post('/api/durva', auth, h(async (req, res) => {
-  const uid = req.user.id, now = Date.now();
-  const hits = (durvaLog.get(uid) || []).filter(t => now - t < 3600000);
-  if (hits.length >= 30) throw new AppError('durva_rate', 'Durva has reached its hourly message limit. Please try again later.', 429);
-  const message = typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 1200) : '';
-  if (!message) throw new AppError('durva_empty', 'Type a question for Durva.', 400);
-
-  let safeHistory = [];
-  const db = await admin.from('durva_messages').select('role,message').eq('user_id', uid).order('created_at', { ascending: false }).limit(12);
-  if (!db.error && db.data) safeHistory = db.data.reverse().map(x => ({ role: x.role, text: x.message }));
-  if (!safeHistory.length && Array.isArray(req.body?.history)) {
-    safeHistory = req.body.history.slice(-12).filter(x => x && (x.role === 'user' || x.role === 'model') && typeof x.text === 'string').map(x => ({ role:x.role, text:x.text.slice(0,1200) }));
-  }
-
-  const parts = [];
-  if (safeHistory.length) parts.push({ text: 'Conversation context:\n' + safeHistory.map(x => (x.role === 'user' ? 'User: ' : 'Durva: ') + x.text).join('\n') });
-  parts.push({ text: 'User: ' + message });
-  durvaLog.set(uid, [...hits, now]);
-
-  const answer = (await geminiCall(parts, { temperature: 0.45, maxOutputTokens: 2500 }, DURVA_SYSTEM)).trim();
-  if (!answer) throw new AppError('durva_empty_ai', 'Durva returned an empty response. Please try again.', 502);
-
-  const ins = await admin.from('durva_messages').insert([
-    { user_id: uid, role: 'user', message },
-    { user_id: uid, role: 'model', message: answer.slice(0, 1200) }
-  ]);
-  if (ins.error) console.error('durva save:', ins.error.message);
-  res.json({ answer, persistent: !ins.error });
-}));
-
 app.post('/api/summary', auth, h(async (req, res) => {
   const uid = req.user.id, now = Date.now();
   const hits = (sumLog.get(uid) || []).filter(t => now - t < 3600000);
@@ -348,6 +272,35 @@ app.post('/api/summary', auth, h(async (req, res) => {
   res.json({ summary });
 }));
 
+
+/* ---------- Durva AI agent: OCR companion + balanced food planning ---------- */
+const DURVA_SYSTEM = `You are Durva, the friendly AI assistant inside TruthLens. You are powered by Harsh.
+Help users understand packaged-food labels and create balanced, practical food routines and simple tasks.
+You may use the nutrition facts supplied by TruthLens. Keep advice general and educational.
+Do NOT provide calorie targets, weight-loss plans, fasting schedules, purging advice, extreme restriction, or body/appearance goals.
+Do not diagnose or treat medical conditions. If the user asks for medical nutrition advice, recommend speaking with a parent/guardian and a qualified clinician.
+For meal plans, emphasize regular balanced meals, varied foods, fruits/vegetables, grains, protein foods, water, and reasonable portions without numeric calorie targets.
+Return JSON only with: reply (string), plan (object or null), tasks (array of objects or strings).
+If no plan/tasks are requested, use null/[].
+If a plan is requested, plan should have title, summary, meals (array of 3-5 strings).
+Tasks should be short and practical.`;
+
+app.post('/api/durva', auth, h(async (req, res) => {
+  const message = typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 1200) : '';
+  if (!message) throw new AppError('bad_message', 'Write a message for Durva.', 400);
+  const facts = 'User message:\\n' + message;
+  const text = await geminiCall([{ text: facts }], { temperature: 0.5, maxOutputTokens: 1800, responseMimeType: 'application/json' }, DURVA_SYSTEM);
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) throw new AppError('durva_parse', 'Durva returned an unexpected response. Try again.', 502);
+  let data;
+  try { data = JSON.parse(m[0]); } catch (e) { throw new AppError('durva_parse', 'Durva returned an unexpected response. Try again.', 502); }
+  res.json({
+    reply: typeof data.reply === 'string' ? data.reply.slice(0, 3000) : 'Done.',
+    plan: data.plan && typeof data.plan === 'object' ? data.plan : null,
+    tasks: Array.isArray(data.tasks) ? data.tasks.slice(0, 10) : []
+  });
+}));
+
 /* ---------- Pages with shared header and footer ---------- */
 // Works with files in folders (public/, partials/) or all in one flat folder. Root files win.
 const DIRS = ['', 'public', 'partials', 'public/assets'];
@@ -358,8 +311,8 @@ async function find(name) {
   }
   throw new Error('File not found: ' + name);
 }
-const PAGES = { '/': 'index.html', '/durva': 'durva.html', '/scan': 'scan.html', '/history': 'history.html', '/limits': 'limits.html', '/pricing': 'pricing.html', '/contact': 'contact.html', '/privacy': 'privacy.html', '/terms': 'terms.html', '/llms.txt': 'llms.txt', '/robots.txt': 'robots.txt', '/sitemap.xml': 'sitemap.xml' };
-const ASSETS = { '/assets/durva.css': ['durva.css', 'text/css; charset=utf-8'], '/assets/durva.js': ['durva.js', 'application/javascript; charset=utf-8'], '/assets/style.css': ['styles.css', 'text/css; charset=utf-8'], '/assets/app.js': ['app.js', 'application/javascript; charset=utf-8'], '/assets/scan.js': ['scan.js', 'application/javascript; charset=utf-8'], '/assets/history.js': ['history.js', 'application/javascript; charset=utf-8'] };
+const PAGES = { '/': 'index.html', '/login': 'login.html', '/durva': 'durva.html', '/scan': 'scan.html', '/history': 'history.html', '/limits': 'limits.html', '/pricing': 'pricing.html', '/contact': 'contact.html', '/privacy': 'privacy.html', '/terms': 'terms.html', '/llms.txt': 'llms.txt', '/robots.txt': 'robots.txt', '/sitemap.xml': 'sitemap.xml' };
+const ASSETS = { '/assets/style.css': ['style.css', 'text/css; charset=utf-8'], '/assets/app.js': ['app.js', 'application/javascript; charset=utf-8'], '/assets/login.js': ['login.js', 'application/javascript; charset=utf-8'], '/assets/chips-mascot.png': ['assets/chips-mascot.png', 'image/png'], '/assets/durva.css': ['durva.css', 'text/css; charset=utf-8'], '/assets/durva.js': ['durva.js', 'application/javascript; charset=utf-8'], '/assets/scan.js': ['scan.js', 'application/javascript; charset=utf-8'], '/assets/history.js': ['history.js', 'application/javascript; charset=utf-8'] };
 const TYPES = { '.html': 'text/html; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8' };
 const read = async f => fs.readFile(await find(f), 'utf8');
 app.get(Object.keys(PAGES), async (req, res) => {

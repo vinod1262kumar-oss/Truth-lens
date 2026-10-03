@@ -49,3 +49,12 @@ Set `LABEL_PROVIDER` in `.env` to `nvidia` (Gemma via NVIDIA) or `gemini`. For N
 - Added floating Durva assistant, powered by the existing Gemini API key. Durva can scan nutrition labels with the existing OCR endpoint, answer label questions, and generate balanced food-routine plans and simple tasks.
 - Durva intentionally avoids calorie targets, weight-loss plans, fasting/extreme restriction and medical diagnosis. It is general nutrition guidance.
 - Added `assets/chips-mascot.png` for the login mascot.
+
+## TruthLens Parrot Green + Durva update
+- Unified the shared site theme around Parrot Green `#7CFC00` with a light grey/green background.
+- Updated Home, Scan, History, Limits, Pricing, Contact, Privacy, Terms, and Login because they all use the shared stylesheet.
+- Durva floating button now opens `/durva` instead of an embedded panel.
+- Added dedicated `durva.html`, `durva.css`, and `durva.js`.
+- Added `/durva` and its assets to `server.js`.
+- Added Gemini timeout/network error handling so temporary AI failures show useful messages.
+- Gemini API key remains server-side in `GEMINI_API_KEY`; it is not placed in frontend code.
