@@ -1,0 +1,4 @@
+[build.environment]
+  # These env vars hold non-sensitive config (model name, provider name, scan quota)
+  # whose values naturally appear in source, e.g. defaults in server.js.
+  SECRETS_SCAN_OMIT_KEYS = "GEMINI_MODEL,LABEL_PROVIDER,FREE_SCANS"
