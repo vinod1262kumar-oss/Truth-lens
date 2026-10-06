@@ -1,19 +1,15 @@
 {
-  "name": "truthlens-sketchbook-ui",
-  "private": true,
+  "name": "truthlens-v1",
   "version": "1.0.0",
+  "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
+  "scripts": {"start":"node server.js","dev":"node --watch server.js"},
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "lucide-react": "latest"
-  },
-  "devDependencies": {}
+    "@supabase/supabase-js":"^2.75.0",
+    "dotenv":"^17.2.2",
+    "express":"^5.1.0",
+    "express-rate-limit":"^8.1.0",
+    "helmet":"^8.1.0",
+    "zod":"^4.1.12"
+  }
 }

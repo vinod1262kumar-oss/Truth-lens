@@ -1,40 +1,33 @@
-# TruthLens — Sketchbook UI
+# TruthLens V1
 
-This package is a Vite + React frontend that adapts the tactile sketchbook/page-turn visual language to the existing TruthLens product concept.
+TruthLens — **Uncover What's Really Inside.**
 
-## Included TruthLens routes
+V1 includes:
+- Desktop-first TruthLens landing page based on the selected dark/gold UI direction.
+- Supabase email/password authentication.
+- Optional Google OAuth button using the Supabase client.
+- Product label image scanning with Gemini on the backend.
+- Deterministic nutrition + claim analysis after OCR/vision extraction.
+- Scan history tied to the authenticated user.
+- Durva AI assistant for food questions, meal planning, and task/plan creation.
+- 8 free scans per account. After 8 scans, the UI shows an upgrade state; no payment provider is enabled in V1.
+- Server-side secrets, Helmet CSP, rate limiting, request-size limits, strict validation, auth checks, atomic quota RPC, and RLS SQL.
 
-- `/` — sketchbook-inspired TruthLens home
-- `/scan` — food scan/upload UI
-- `/history` — scan history UI
-- `/durva` — dedicated Durva assistant UI
-- `/limits`
-- `/pricing`
-- `/contact`
-- `/login`
+## Setup
 
-## Existing TruthLens styling preserved
+1. Copy `.env.example` to `.env` and fill the values.
+2. Run `npm install`.
+3. Open the Supabase SQL editor and run `sql/schema.sql`.
+4. Enable Email/Password in Supabase Auth. If desired, configure Google in Supabase Auth and keep the Google button enabled.
+5. Start with `npm start`.
+6. Open `http://localhost:3000`.
 
-- Parrot Green: `#7CFC00`
-- Light grey/paper backgrounds
-- Glass/translucent controls
-- Instrument Serif + Newsreader visual direction
-- Mobile-first responsive layout
-- Dedicated `/durva` route
+## Production
 
-## Run
+Set the same environment variables in Render. Do not commit `.env`. The browser receives only the Supabase URL and publishable key; Gemini and the Supabase secret key stay server-side.
 
-```bash
-npm install
-npm run dev
-```
+## Security model
 
-## Important source-fidelity note
+The Supabase secret key is used only by the backend. User data is protected with RLS. The scan counter is incremented atomically by a database function so concurrent requests cannot simply race past the free allowance. AI calls require a signed-in user. Image payloads are limited by bytes and MIME type. API errors intentionally avoid returning stack traces or secrets.
 
-The exact ThreeUI/Meng To source and its 17 registered binary assets were not available inside this execution environment, so this package does **not** claim to contain the byte-exact canonical ThreeUI document. It implements the requested TruthLens adaptation and the interaction language locally rather than inventing a dependency on an unavailable package.
-
-To make the result byte-exact to the registered source, place the verified `meng-to-sketchbook.html` and all 17 registered assets at:
-
-`public/landing-pages/meng-to-sketchbook/`
-
-and wire the local iframe host described by the original skill.
+This is security-hardened application code, not a guarantee that any internet-facing software can never be attacked. Keep dependencies updated and rotate any key that is ever exposed.

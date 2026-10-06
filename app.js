@@ -1,55 +1,17 @@
-(function () {
-  var $ = function (i) { return document.getElementById(i); };
-  var TL = window.TL = { token: null, sb: null, ready: false, subs: [] };
-  TL.api = async function (path, body, method) {
-    var hd = { 'Content-Type': 'application/json' };
-    if (TL.token) hd.Authorization = 'Bearer ' + TL.token;
-    var r;
-    try { r = await fetch(path, { method: method || (body ? 'POST' : 'GET'), headers: hd, body: body ? JSON.stringify(body) : undefined }); }
-    catch (e) { return { status: 0, data: { error: 'No internet, or the server is waking up. Try again in a moment.', code: 'network' } }; }
-    var d = await r.json().catch(function () { return { error: 'The server sent an unexpected reply (status ' + r.status + ').', code: 'bad_reply' }; });
-    return { status: r.status, data: d };
-  };
-  TL.setLeft = function (l) {
-    var c = $('chip'); if (!c || l === undefined || l === null && false) return;
-    c.hidden = false; c.textContent = l === null ? 'Pro: unlimited' : l + ' free scan' + (l === 1 ? '' : 's') + ' left';
-  };
-  TL.signIn = function () {
-    try { localStorage.setItem('tl_next', '/scan'); } catch (e) {}
-    if (location.pathname !== '/login') { location.href = '/login'; return; }
-    if (TL.sb) TL.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/login' } });
-  };
-  TL.onAuth = function (fn) { TL.subs.push(fn); if (TL.ready) fn(!!TL.token); };
-  function apply(s) {
-    TL.token = s ? s.access_token : null; TL.ready = true;
-    document.querySelectorAll('[data-auth]').forEach(function (el) { el.hidden = (el.getAttribute('data-auth') === 'in') !== !!s; });
-    var b = $('authBtn'); if (b) b.textContent = s ? 'Sign out' : 'Sign in';
-    var c = $('chip'); if (c && !s) c.hidden = true;
-    if (s) {
-      var nx = null; try { nx = localStorage.getItem('tl_next'); localStorage.removeItem('tl_next'); } catch (e) {}
-      if (nx && location.pathname !== nx) { location.replace(nx); return; }
-      TL.api('/api/me').then(function (r) { if (r.status === 200) TL.setLeft(r.data.left); });
-    }
-    TL.subs.forEach(function (fn) { fn(!!s); });
-  }
-  async function init() {
-    document.querySelectorAll('#nav a').forEach(function (a) { if (a.getAttribute('href') === location.pathname) a.className = 'on'; });
-    var b = $('authBtn'); if (b) b.onclick = function () { if (!TL.sb) return; TL.token ? TL.sb.auth.signOut() : TL.signIn(); };
-    try {
-      var c = await (await fetch('/api/config')).json();
-      TL.sb = supabase.createClient(c.url, c.anonKey);
-      var s = await TL.sb.auth.getSession(); apply(s.data.session);
-      TL.sb.auth.onAuthStateChange(function (_e, sess) { apply(sess); });
-    } catch (e) { TL.ready = true; TL.subs.forEach(function (fn) { fn(false); }); }
-  }
-  init();
-
-  /* Durva launcher: dedicated assistant page */
-  (function(){
-    var a=document.createElement('a');
-    a.id='durvaLaunch'; a.className='durva-launch'; a.href='/durva';
-    a.setAttribute('aria-label','Open Durva health and wellness assistant');
-    a.innerHTML='<span>Durva</span>';
-    document.body.appendChild(a);
-  })();
-})();
+const $=s=>document.querySelector(s);const modal=$('#modal'),content=$('#modalContent');let sb=null,currentUser=null;
+async function init(){const r=await fetch('/api/config');const c=await r.json();sb=window.supabase.createClient(c.supabaseUrl,c.supabasePublishableKey);const {data}=await sb.auth.getSession();currentUser=data.session?.user||null;renderAuth();sb.auth.onAuthStateChange((_e,s)=>{currentUser=s?.user||null;renderAuth();});}
+function open(html){content.innerHTML=html;modal.classList.remove('hidden');}
+function close(){modal.classList.add('hidden');content.innerHTML='';}
+function renderAuth(){const q=$('#quotaPill');if(currentUser){q.textContent='Account active';$('#authBtn').textContent='Open TruthLens';}else{q.textContent='8 free scans';$('#authBtn').textContent='Get Started';}}
+function authView(){open(`<p class="eyebrow">TRUTHLENS ACCOUNT</p><h2>See what's really inside.</h2><p class="sub">Sign in to scan products, save history, and use Durva.</p><div class="tabs"><button class="tab active" id="loginTab">Sign in</button><button class="tab" id="signupTab">Create account</button></div><div class="auth-grid"><input class="input full" id="email" type="email" placeholder="Email" autocomplete="email"><input class="input full" id="password" type="password" placeholder="Password" autocomplete="current-password"><button class="btn btn-dark full" id="emailAuth">Continue</button><button class="btn btn-ghost full" id="googleAuth">Continue with Google</button></div><p class="auth-message" id="authMsg"></p>`);let signup=false;const tab=(x)=>{signup=x;$('#loginTab').classList.toggle('active',!signup);$('#signupTab').classList.toggle('active',signup);$('#emailAuth').textContent=signup?'Create account':'Continue';};$('#loginTab').onclick=()=>tab(false);$('#signupTab').onclick=()=>tab(true);$('#emailAuth').onclick=async()=>{const email=$('#email').value.trim(),password=$('#password').value;if(password.length<6){$('#authMsg').textContent='Use a password with at least 6 characters.';return}$('#authMsg').textContent='';const out=signup?await sb.auth.signUp({email,password}):await sb.auth.signInWithPassword({email,password});if(out.error){$('#authMsg').textContent=out.error.message;return}if(signup&&!out.data.session){$('#authMsg').textContent='Check your email to confirm your account.';return}close();if(signup||out.data.session) openApp();};$('#googleAuth').onclick=async()=>{const out=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+'/app.html'}});if(out.error)$('#authMsg').textContent=out.error.message;};}
+async function openApp(){if(!currentUser){authView();return}location.href='/app.html';}
+async function requireAuthThen(action){if(!currentUser){authView();return}action();}
+$('#authBtn').onclick=()=>requireAuthThen(openApp);$('#scanHero').onclick=()=>requireAuthThen(()=>scanView());$('#scanFeature').onclick=()=>requireAuthThen(()=>scanView());$('#durvaBtn').onclick=()=>requireAuthThen(()=>durvaView());$('#closeModal').onclick=close;modal.addEventListener('click',e=>{if(e.target===modal)close()});
+function scanView(){open(`<p class="eyebrow">PRODUCT SCANNER</p><h2>Uncover what's really inside.</h2><p class="sub">Upload a clear photo of the nutrition panel. V1 includes 8 free scans.</p><input class="file-input" id="scanFile" type="file" accept="image/jpeg,image/png,image/webp"><button class="btn btn-gold" id="scanNow" style="margin-top:14px">Analyze label →</button><div id="scanOut"></div>`);$('#scanNow').onclick=runScan;}
+function fileData(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);});}
+async function runScan(){const f=$('#scanFile').files?.[0];if(!f)return $('#scanOut').innerHTML='<p class="auth-message">Choose an image first.</p>';if(f.size>5*1024*1024)return $('#scanOut').innerHTML='<p class="auth-message">Please use an image under 5 MB.</p>';$('#scanOut').innerHTML='<div class="result">Reading the label…</div>';const {data}=await sb.auth.getSession();const r=await fetch('/api/scan',{method:'POST',headers:{Authorization:`Bearer ${data.session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({image:await fileData(f),mime:f.type})});const d=await r.json();if(!r.ok){$('#scanOut').innerHTML=`<div class="result"><b>${d.error||'Scan failed.'}</b>${d.upgrade?'<p class="sub">V1 has reached its free allowance. Payments will be added after launch.</p>':''}</div>`;return}$('#scanOut').innerHTML=`<div class="result"><div class="result-top"><div><small>TRUTHLENS VERDICT</small><div class="verdict ${d.analysis.verdict.level}">${d.analysis.verdict.level}</div><p class="sub">${d.analysis.product||'Product'} · limiting factor: ${d.analysis.limiting}</p></div><b>${d.analysis.safe_grams}g</b></div><div class="nutri-grid">${nutri('Sugar',d.nutrients.total_sugars,'g')}${nutri('Sat. fat',d.nutrients.sat_fat,'g')}${nutri('Sodium',d.nutrients.sodium,'mg')}${nutri('Protein',d.nutrients.protein,'g')}</div><p class="sub">${d.analysis.note}</p>${(d.analysis.claims||[]).length?'<div style="margin-top:15px"><b>Claim check</b>'+d.analysis.claims.map(c=>`<div class="history-row"><span>${escapeHtml(c.claim||'Claim')}</span><b>${escapeHtml(c.status)}</b></div>`).join('')+'</div>':''}<p class="sub"><b>${d.scans_left}</b> free scans left.</p></div>`;}
+function nutri(n,v,u){return `<div class="nutri"><small>${n}</small><b>${v??'—'}${v!=null?u:''}</b></div>`}
+function durvaView(){open(`<p class="eyebrow">DURVA AI</p><h2>Ask Durva.</h2><p class="sub">Food questions, balanced meal ideas, and practical tasks.</p><div id="durvaChat" class="result"><div class="empty">Start with a food question or ask for a simple weekly plan.</div></div><div style="display:flex;gap:8px;margin-top:12px"><input class="input" id="durvaInput" placeholder="Ask Durva…"><button class="btn btn-dark" id="durvaSend">Send</button></div>`);$('#durvaSend').onclick=sendDurva;$('#durvaInput').addEventListener('keydown',e=>{if(e.key==='Enter')sendDurva();});}
+async function sendDurva(){const input=$('#durvaInput'),msg=input.value.trim();if(!msg)return;const chat=$('#durvaChat');chat.innerHTML+=`<div class="bubble user">${escapeHtml(msg)}</div><div class="bubble bot">Thinking…</div>`;input.value='';const {data}=await sb.auth.getSession();const r=await fetch('/api/durva',{method:'POST',headers:{Authorization:`Bearer ${data.session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({message:msg})});const d=await r.json();const bots=chat.querySelectorAll('.bubble.bot');const last=bots[bots.length-1];last.innerHTML=r.ok?escapeHtml(d.message).replace(/\n/g,'<br>'):(d.error||'Durva is unavailable.');if(d.tasks?.length)chat.innerHTML+=`<div class="sub"><b>Tasks created:</b> ${d.tasks.map(t=>escapeHtml(t.title)).join(', ')}</div>`;}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+init();
